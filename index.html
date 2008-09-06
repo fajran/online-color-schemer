@@ -1,0 +1,631 @@
+<html><head>
+<title>Color Schemer</title>
+<style type="text/css">
+
+body {
+	background: #444;
+}
+
+#satmap {
+	position: absolute;
+	top: 50px;
+	left: 50px;
+	width: 150px;
+	height: 150px;
+	overflow: hidden;
+}
+.satmapc {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 150px;
+	height: 150px;
+}
+#satmapimg {
+	z-index: 20;
+}
+#satmappos {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 19px;
+	height: 19px;
+	z-index: 25;
+}
+#satmapclr {
+	z-index: 10;
+	background: red;
+}
+#satmapcov {
+	z-index: 30;
+  cursor: crosshair;
+}
+#spectrum {
+	position: absolute;
+	top: 50px;
+	left: 220px;
+	width: 25px;
+	height: 150px;
+}
+.spectrumc {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 25px;
+	height: 150px;
+}
+#spectrumcov {
+	z-index: 30;
+  cursor: crosshair;
+}
+#spectrumclr {
+	z-index: 20;
+	width: 20px;
+}
+#spectrumpos {
+	position: absolute;
+	top: 50px;
+	left: 22px;
+}
+
+#color {
+	position: absolute;
+	top: 50px;
+	left: 270px;
+	width: 100px;
+	height: 100px;
+}
+
+/** value **/
+
+#val * {
+  font-family: verdana, sans-serif;
+  font-size: 10px;
+}
+#val label {
+  color: white;
+  width: 45px;
+  float: left;
+}
+#val input {
+  width: 40px;
+  border: 0px;
+  height: 18px;
+  margin-bottom: 2px;
+  padding: 1px 2px 1px 2px;
+}
+#val {
+  position: absolute;
+  left: 50px;
+  top: 250px;
+}
+#val #hsv {
+  position: absolute;
+  left: 100px;
+  top: 0px;
+}
+#val #hex {
+  position: absolute;
+  left: 200px;
+  top: 0px;
+}
+#val #hex input {
+  width: 60px;
+}
+
+.harmonycol {
+  width: 50px;
+  height: 50px;
+}
+.harmonyhex {
+  border: 0px;
+  background: transparent;
+  color: white;
+  font-size: 10px;
+  width: 50px;
+  height: 20px;
+}
+.harmonyset {
+  float: left;
+  margin-right: 20px;
+}
+.harmonygrp {
+  height: 75px;
+  clear: both;
+}
+
+#harmony {
+  position: absolute;
+  top: 50px;
+  left: 450px;
+}
+#harmony h3 {
+  margin: 0px 0px 5px 0px;
+  color: #ddd;
+  font-size: 10px;
+  clear: both;
+  font-family: verdana;
+}
+
+
+
+#tetrad {
+
+}
+
+</style>
+<script type="text/javascript">
+
+/** vars **/
+
+//mouse
+var mouseX = 0;
+var mouseY = 0;
+var mouseState = 0;
+
+//color
+var colorR, colorG, colorB;
+var colorH, colorS, colorV;
+
+/** utility **/
+function dec2hex(v) {
+	var hex = new Array("0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F");
+	return hex[(v >> 4) & 0xF] + hex[v & 0xF];
+}
+
+function changeColor(r, g, b) {
+	var hsv = getHSV(r, g, b);
+	colorR = r;
+	colorG = g;
+	colorB = b;
+	colorH = hsv[0];
+	colorS = hsv[1];
+	colorV = hsv[2];
+	
+	var osp = document.getElementById("spectrumpos");
+	osp.style.top = Math.round(hsv[0] * 150.0 / 360.0) - 3;
+
+	var osmp = document.getElementById("satmappos");
+
+  osmp.style.top = Math.round((255 - hsv[1]) * 150 / 255) - 10;
+	osmp.style.left = Math.round(hsv[2] * 150 / 255) - 10;
+
+	var oc = document.getElementById("color");
+	oc.style.backgroundColor = "rgb("+Math.round(r)+", "+Math.round(g)+", "+Math.round(b)+")";
+
+	rgb = getRGB(colorH, 255, 255);
+	changeSatMapColor(rgb[0], rgb[1], rgb[2]);
+  
+  document.getElementById("rgbr").value = Math.round(colorR);
+  document.getElementById("rgbg").value = Math.round(colorG);
+  document.getElementById("rgbb").value = Math.round(colorB);
+  
+  document.getElementById("hsvh").value = Math.round(colorH);
+  document.getElementById("hsvs").value = Math.round(colorS);
+  document.getElementById("hsvv").value = Math.round(colorV);
+  
+  document.getElementById("hex1").value = "#"+dec2hex(Math.round(colorR))+dec2hex(Math.round(colorG))+dec2hex(Math.round(colorB));  
+  
+  /** color scheme **/
+  hmono();
+  hcomplement();
+  hanalog();
+  hsplit();
+  htriad();
+  htetrad();
+}
+function changeSatMapColor(r, g, b) {
+	var o = document.getElementById("satmapclr");
+	o.style.backgroundColor = "rgb("+Math.round(r)+", "+Math.round(g)+", "+Math.round(b)+")";
+}
+
+function registerEvents() {
+	var os = document.getElementById("spectrumcov");
+	os.onmousemove = smm;
+	os.onclick = smc;
+
+	var osm = document.getElementById("satmapcov");
+	osm.onmousemove = smmm;
+	osm.onclick = smmc;
+	
+	document.onmousemove = dmm;
+	document.onmousedown = dmd;
+	document.onmouseup = dmu;
+	changeColor(255, 0, 0);
+}
+
+function loadDoc() {
+	registerEvents();
+}
+
+/** events **/
+
+function processEvent(e) {
+}
+
+function dmd(e) {
+	mouseState = 1;
+}
+function dmu(e) {
+	mouseState = 0;
+}
+function dmm(e) {
+	mouseX = e.layerX;
+	mouseY = e.layerY;
+}
+
+/** spectrum **/
+function smm(e) {
+	if (mouseState == 1) {
+		var y = mouseY;
+    if (y < 0) { y = 0; } if (y > 150) { y = 150; } 
+		var rgb = getRGB(y * 360.0/150.0, colorS, colorV);
+		changeColor(rgb[0], rgb[1], rgb[2]);
+	}
+}
+
+function smc(e) {
+	dmm(e);
+	var y = mouseY;
+  if (y < 0) { y = 0; } if (y > 150) { y = 150; } 
+	var rgb = getRGB(y * 360.0/150.0, colorS, colorV);
+	changeColor(rgb[0], rgb[1], rgb[2]);
+}
+
+/** satmap **/
+
+function smmm(e) {
+	if (mouseState == 1) {
+		var x = mouseX;
+		var y = mouseY;
+    if (x < 0) { x = 0; } if (x >= 150) { x = 149; }
+    if (y < 0) { y = 0; } if (y >= 150) { y = 149; } 
+		var rgb = getRGB(colorH, 255.0 - y * 255.0 / 150.0, x * 255.0 / 150.0);
+		changeColor(rgb[0], rgb[1], rgb[2]);
+	}
+}
+
+function smmc(e) {
+	dmm(e);
+	var x = mouseX;
+	var y = mouseY;
+  if (x < 0) { x = 0; } if (x >= 150) { x = 149; }
+  if (y < 0) { y = 0; } if (y >= 150) { y = 149; } 
+	var rgb = getRGB(colorH, 255.0 - y / 150.0 * 255.0, x / 150.0 * 255.0);
+	changeColor(rgb[0], rgb[1], rgb[2]);
+}
+
+/** color harmony **/
+
+function hmono() {
+  //FIXME
+  var h, s, v;
+  h = colorH;
+  s = colorS;
+  v = colorV;
+  
+  var s2, s3, s4, v2, v3, v4;
+  s2 = s * 85 / 100;
+  s3 = s * 70 / 100;
+  s4 = s * 55 / 100;
+  v2 = v * 85 / 100;
+  v3 = v * 75 / 100;
+  v4 = v * 55 / 100;
+  
+
+  setHarmony("mono1", h, s, v);
+  setHarmony("mono2", h, s2, v2);
+  setHarmony("mono3", h, s3, v3);
+  setHarmony("mono4", h, s4, v4);
+}
+
+function hcomplement() {
+  var h, s, v;
+  h = colorH;
+  s = colorS;
+  v = colorV;
+  
+  var h2;
+  h2 = (h + 180) % 360;
+  
+  setHarmony("complement1", h2, s, v);
+}
+
+function hanalog() {
+  var h, s, v;
+  h = colorH;
+  s = colorS;
+  v = colorV;
+  
+  var h1, h2;
+  h1 = (h - 22) % 360;
+  h2 = (h + 22) % 360;
+  
+  setHarmony("analog1", h1, s, v);
+  setHarmony("analog2", h2, s, v);
+}
+
+function hsplit() {
+  var h, s, v;
+  h = colorH;
+  s = colorS;
+  v = colorV;
+  
+  var h2, h3;
+  h2 = (h + 165) % 360;
+  h3 = (h + 195) % 360;
+  
+  setHarmony("split1", h, s, v);
+  setHarmony("split2", h2, s, v);
+  setHarmony("split3", h3, s, v);
+}
+
+function htriad() {
+  var h, s, v;
+  h = colorH;
+  s = colorS;
+  v = colorV;
+  
+  var h2, h3;
+  h2 = (h + 120) % 360;
+  h3 = (h + 240) % 360;
+  
+  setHarmony("triad1", h, s, v);
+  setHarmony("triad2", h2, s, v);
+  setHarmony("triad3", h3, s, v);
+}
+
+function htetrad() {
+  var h, s, v;
+  h = colorH;
+  s = colorS;
+  v = colorV;
+  
+  var h1, h2, h3, h4;
+  h1 = (h - 15) % 360;
+  h2 = (h + 15) % 360;
+  h3 = (h + 165) % 360;
+  h4 = (h + 195) % 360;
+  
+  setHarmony("tetrad1", h1, s, v);
+  setHarmony("tetrad2", h2, s, v);
+  setHarmony("tetrad3", h3, s, v);
+  setHarmony("tetrad4", h4, s, v);
+}
+
+function setHarmony(prefix, h, s, v) {
+  var rgb = getRGB(h, s, v);
+  var i;
+  for (i=0; i<3; i++) { rgb[i] = Math.round(rgb[i]); }
+  document.getElementById(prefix+"_col").style.backgroundColor = "rgb("+rgb[0]+", "+rgb[1]+", "+rgb[2]+")";
+  document.getElementById(prefix+"_hex").value = "#"+dec2hex(rgb[0])+dec2hex(rgb[1])+dec2hex(rgb[2]);
+}
+
+//XXX
+function d(s) {
+	document.getElementById("d").value = s;
+}
+
+/** color **/
+
+function getRGB(h, s, v) {
+
+	var i;
+	var f, p, q, t;
+	var r, g, b;
+  s = s / 255.0;
+  v = v / 255.0;
+
+  if ( s == 0 ) {
+		// achromatic (grey)
+		return new Array(v, v, v);
+	}
+	h /= 60;			// sector 0 to 5
+	i = Math.floor( h );
+	f = h - i;			// factorial part of h
+	p = v * ( 1 - s );
+	q = v * ( 1 - s * f );
+	t = v * ( 1 - s * ( 1 - f ) );
+
+	switch( i ) {
+		case 0:
+			r = v;
+			g = t;
+			b = p;
+			break;
+		case 1:
+			r = q;
+			g = v;
+			b = p;
+			break;
+		case 2:
+			r = p;
+			g = v;
+			b = t;
+			break;
+		case 3:
+			r = p;
+			g = q;
+			b = v;
+			break;
+		case 4:
+			r = t;
+			g = p;
+			b = v;
+			break;
+		default:		// case 5:
+			r = v;
+			g = p;
+			b = q;
+			break;
+	}
+
+  r *= 255.0;
+  g *= 255.0;
+  b *= 255.0;
+  
+	return new Array(r, g, b);
+
+}
+
+function getHSV(r, g, b) {
+	var min, max, delta;
+	var h, s, v;
+
+  r = r / 255.0;
+  g = g / 255.0;
+  b = b / 255.0;
+  
+	min = Math.min(Math.min(r, g), Math.min(g, b));
+	max = Math.max(Math.max(r, g), Math.max(g, b));
+	v = max;				// v
+
+	delta = max - min;
+
+	if( max != 0 )
+		s = delta / max;		// s
+	else {
+		// r = g = b = 0		// s = 0, v is undefined
+		s = 0;
+		h = -1;
+    s = s * 255.0;
+    v = v * 255.0;
+		return new Array(h, s, v);
+	}
+
+	if( r == max )
+		h = ( g - b ) / delta;		// between yellow & magenta
+	else if( g == max )
+		h = 2 + ( b - r ) / delta;	// between cyan & yellow
+	else
+		h = 4 + ( r - g ) / delta;	// between magenta & cyan
+
+	h *= 60;				// degrees
+	while ( h < 0 )
+		h += 360;
+
+  s = s * 255.0;
+  v = v * 255.0;
+
+	return new Array(h, s, v);
+}
+
+</script>
+</head><body onload="loadDoc()">
+
+<input style="width:90%; display:none" id="d"/>
+
+<div id="satmap">
+	<div id="satmapcov" class="satmapc"></div>
+	<img id="satmappos" src="img/satmappos.png" width="19" height="19"/>
+	<div id="satmapimg" class="satmapc">
+		<img src="img/satmap.png" width="150" height="150"/>
+	</div>
+	<div id="satmapclr" class="satmapc"></div>
+</div>
+<div id="spectrum">
+	<div id="spectrumcov" class="spectrumc"></div>
+	<div id="spectrumclr" class="spectrumc">
+		<img src="img/spectrum.png" width="20" height="150"/>
+	</div>
+	<img id="spectrumpos" src="img/specp.png" width="5" height="7"/>
+</div>
+
+<div id="color"></div>
+
+<div id="val">
+  <div id="rgb">
+    <label>Red</label> <input type="text" id="rgbr"/><br/>
+    <label>Green</label> <input type="text" id="rgbg"/><br/>
+    <label>Blue</label> <input type="text" id="rgbb"/>
+  </div>
+  <div id="hsv">
+    <label>Hue</label> <input type="text" id="hsvh"/><br/>
+    <label>Sat</label> <input type="text" id="hsvs"/><br/>
+    <label>Val</label> <input type="text" id="hsvv"/>
+  </div>
+  <div id="hex">
+    <label>Hex</label> <input type="text" id="hex1"/>
+  </div>
+</div>
+
+<div id="harmony">
+  <div id="mono" class="harmonygrp">
+    <h3>Monochromatic</h3>
+    <div id="mono1" class="harmonyset">
+      <div id="mono1_col" class="harmonycol"></div><input type="text" id="mono1_hex" class="harmonyhex"/>
+    </div>
+    <div id="mono2" class="harmonyset">
+      <div id="mono2_col" class="harmonycol"></div><input type="text" id="mono2_hex" class="harmonyhex"/>
+    </div>
+    <div id="mono3" class="harmonyset">
+      <div id="mono3_col" class="harmonycol"></div><input type="text" id="mono3_hex" class="harmonyhex"/>
+    </div>
+    <div id="mono4" class="harmonyset">
+      <div id="mono4_col" class="harmonycol"></div><input type="text" id="mono4_hex" class="harmonyhex"/>
+    </div>
+  </div>
+
+  <div id="complement" class="harmonygrp">
+    <h3>Complementary</h3>
+    <div id="complement1" class="harmonyset">
+      <div id="complement1_col" class="harmonycol"></div><input type="text" id="complement1_hex" class="harmonyhex"/>
+    </div>
+  </div>
+
+  <div id="analog" class="harmonygrp">
+    <h3>Analogous</h3>
+    <div id="analog1" class="harmonyset">
+      <div id="analog1_col" class="harmonycol"></div><input type="text" id="analog1_hex" class="harmonyhex"/>
+    </div>
+    <div id="analog2" class="harmonyset">
+      <div id="analog2_col" class="harmonycol"></div><input type="text" id="analog2_hex" class="harmonyhex"/>
+    </div>
+  </div>
+  
+  <div id="split" class="harmonygrp">
+    <h3>Split Complementary</h3>
+    <div id="split1" class="harmonyset">
+      <div id="split1_col" class="harmonycol"></div><input type="text" id="split1_hex" class="harmonyhex"/>
+    </div>
+    <div id="split2" class="harmonyset">
+      <div id="split2_col" class="harmonycol"></div><input type="text" id="split2_hex" class="harmonyhex"/>
+    </div>
+    <div id="split3" class="harmonyset">
+      <div id="split3_col" class="harmonycol"></div><input type="text" id="split3_hex" class="harmonyhex"/>
+    </div>
+  </div>
+  
+  <div id="triad" class="harmonygrp">
+    <h3>Triadic</h3>
+    <div id="triad1" class="harmonyset">
+      <div id="triad1_col" class="harmonycol"></div><input type="text" id="triad1_hex" class="harmonyhex"/>
+    </div>
+    <div id="triad2" class="harmonyset">
+      <div id="triad2_col" class="harmonycol"></div><input type="text" id="triad2_hex" class="harmonyhex"/>
+    </div>
+    <div id="triad3" class="harmonyset">
+      <div id="triad3_col" class="harmonycol"></div><input type="text" id="triad3_hex" class="harmonyhex"/>
+    </div>
+  </div>
+  
+  <div id="tetrad" class="harmonygrp">
+    <h3>Tetradic (Double Complementary)</h3>
+    <div id="tetrad1" class="harmonyset">
+      <div id="tetrad1_col" class="harmonycol"></div><input type="text" id="tetrad1_hex" class="harmonyhex"/>
+    </div>
+    <div id="tetrad2" class="harmonyset">
+      <div id="tetrad2_col" class="harmonycol"></div><input type="text" id="tetrad2_hex" class="harmonyhex"/>
+    </div>
+    <div id="tetrad3" class="harmonyset">
+      <div id="tetrad3_col" class="harmonycol"></div><input type="text" id="tetrad3_hex" class="harmonyhex"/>
+    </div>
+    <div id="tetrad4" class="harmonyset">
+      <div id="tetrad4_col" class="harmonycol"></div><input type="text" id="tetrad4_hex" class="harmonyhex"/>
+    </div>
+  </div>
+
+  
+</div>
+
+</body></html>
